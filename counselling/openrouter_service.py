@@ -288,12 +288,12 @@ REMEMBER: Respond as if you're speaking directly to the participants. No formatt
             objectives_text = "\n".join([f"• {obj}" for obj in session_objectives])
             session_info_parts.append(f"SESSION OBJECTIVES:\n{objectives_text}")
 
-        # if session_categories:
-        #     categories_text = ", ".join(session_categories)
-        #     session_info_parts.append(f"SESSION FOCUS AREAS: {categories_text}")
+        if session_categories:
+            categories_text = ", ".join(session_categories)
+            session_info_parts.append(f"SESSION FOCUS AREAS: {categories_text}")
 
-        # if session_context:
-        #     session_info_parts.append(f"SESSION CONTEXT:\n{session_context}")
+        if session_context:
+            session_info_parts.append(f"SESSION CONTEXT:\n{session_context}")
 
         # Add participant responses
         if summary_responses:
@@ -322,7 +322,7 @@ Create a thoughtful summary that:
             {"role": "user", "content": user_prompt}
         ]
 
-        return self._make_request(messages, max_tokens=800, temperature=0.8)
+        return self._make_request(messages, max_tokens=900, temperature=0.8)
 
 
 # Create a singleton instance

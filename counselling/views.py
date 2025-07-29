@@ -87,8 +87,7 @@ def call_objective_generation_llm(categories, context, partner_name, partner_rel
         return objectives[:5]  # Ensure max 5 objectives
         
     except Exception as e:
-        print(objectives)
-        print(e)
+
         return [
             "Understand each other's perspectives on the main issue",
             "Practice active listening and empathy",
@@ -1948,7 +1947,7 @@ async def sse_stream(request):
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
     response['Connection'] = 'keep-alive'
-    response['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+    response['Access-Control-Allow-Origin'] = 'https://lets-talk-counselling.netlify.app'
     response['Access-Control-Allow-Credentials'] = 'true'
     response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
     
