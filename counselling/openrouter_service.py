@@ -49,7 +49,7 @@ class OpenRouterService:
 
 Session categories: {categories_text}{context_part}{partner_part}
 
-Please generate 1-5 clear objectives for this counseling session.""".strip()
+Please generate 1-5 clear objectives for this counseling session. Do not add titles or any markdown formatting for bold""".strip()
         
         messages = [
             {"role": "system", "content": system_prompt},
