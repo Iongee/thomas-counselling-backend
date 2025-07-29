@@ -1,0 +1,7 @@
+# Django 
+python manage.py runserver
+
+# Migrations
+
+# Vue
+npm run dev
