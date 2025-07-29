@@ -8,12 +8,19 @@ https://docs.djangoproject.com/en/5.2/howto/deployment/asgi/
 """
 
 import os
+import django
 from channels.auth import AuthMiddlewareStack
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-import counselling.routing
 
+# Set the settings module
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
+
+# Initialize Django BEFORE importing other modules
+django.setup()
+
+# Now import your routing modules
+import counselling.routing
 
 # application = get_asgi_application()
 application = ProtocolTypeRouter({
