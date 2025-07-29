@@ -67,13 +67,14 @@ def call_objective_generation_llm(categories, context, partner_name, partner_rel
     Call the LLM API to generate session objectives based on form data.
     Returns a list of 1-5 objectives.
     """
+    objectives = []
     try:
         partner_info = f"{partner_name} ({partner_relationship})" if partner_name else None
 
         llm_response = openrouter_service.generate_session_objectives(context, categories, partner_info)
 
         # Parse the numbered list response into a list of objectives
-        objectives = []
+        
         lines = llm_response.strip().split('\n')
         for line in lines:
             line = line.strip()
@@ -82,10 +83,12 @@ def call_objective_generation_llm(categories, context, partner_name, partner_rel
                 objective = line.split('.', 1)[-1].strip() if '.' in line else line[1:].strip()
                 if objective:
                     objectives.append(objective)
-
+        
         return objectives[:5]  # Ensure max 5 objectives
         
     except Exception as e:
+        print(objectives)
+        print(e)
         return [
             "Understand each other's perspectives on the main issue",
             "Practice active listening and empathy",
