@@ -90,6 +90,18 @@ CORS_ALLOWED_ORIGINS = [
     "https://lets-talk-counselling.netlify.app",
     "https://*.ngrok-free.app"
 ]
+
+# Allow custom headers including ngrok-skip-browser-warning
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+    "ngrok-skip-browser-warning",
+]
+
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
     "https://lets-talk-counselling.netlify.app",
