@@ -85,8 +85,16 @@ CHANNEL_LAYERS = {
 # }
 
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173","https://lets-talk-counselling.netlify.app"]
-CSRF_TRUSTED_ORIGINS = ['http://localhost:5173',"https://lets-talk-counselling.netlify.app"]
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "https://lets-talk-counselling.netlify.app",
+    "https://*.ngrok-free.app"
+]
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:5173',
+    "https://lets-talk-counselling.netlify.app",
+    "https://*.ngrok-free.app"
+]
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
