@@ -1,7 +1,6 @@
 from django.db import models
 from itertools import chain
 from operator import itemgetter
-from django.conf import settings 
 
 import uuid
 from django.db.models import Prefetch, Max
@@ -11,7 +10,7 @@ from datetime import timedelta
 
 class Session(models.Model):
     creator = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='created_sessions',
         on_delete=models.CASCADE
     )
@@ -239,14 +238,14 @@ class Relationship(models.Model):
         ('colleague', 'Colleague'),
         ('other', 'Other'),
     ]
-    
+
     from_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='relationships_created',
         on_delete=models.CASCADE
     )
     to_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='relationships_received',
         on_delete=models.CASCADE
     )
@@ -295,13 +294,13 @@ class RelationshipInvitation(models.Model):
     
     invitation_uuid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     from_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='sent_relationship_invitations',
         on_delete=models.CASCADE
     )
     to_email = models.EmailField()
     to_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='received_relationship_invitations',
         on_delete=models.SET_NULL,
         null=True,
@@ -381,7 +380,7 @@ class SessionParticipant(models.Model):
         on_delete=models.CASCADE
     )
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='sessions',
         on_delete=models.CASCADE
     )
@@ -455,7 +454,7 @@ class Round(models.Model):
 
 class Message(models.Model):
     chat_round = models.ForeignKey(Round, related_name='messages',on_delete=models.CASCADE)
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sender = models.ForeignKey('users.User', on_delete=models.CASCADE)
     content = models.TextField()
     sent_at = models.DateTimeField(auto_now_add=True)
 
@@ -472,7 +471,7 @@ class LLMResponse(models.Model):
 
 class Reflection(models.Model):
     session = models.ForeignKey(Session,related_name='reflections',on_delete=models.CASCADE)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL,related_name='reflections',on_delete=models.CASCADE)
+    user = models.ForeignKey('users.User',related_name='reflections',on_delete=models.CASCADE)
     feelings = models.TextField()
     expected_outcome = models.TextField()
     submitted_at = models.DateTimeField(auto_now_add=True)
@@ -518,12 +517,12 @@ class SessionInvitation(models.Model):
         on_delete=models.CASCADE
     )
     from_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='sent_session_invitations',
         on_delete=models.CASCADE
     )
     to_user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='received_session_invitations',
         on_delete=models.CASCADE
     )
@@ -646,7 +645,7 @@ class SessionSummaryResponse(models.Model):
         on_delete=models.CASCADE
     )
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
+        'users.User',
         related_name='session_summary_responses',
         on_delete=models.CASCADE
     )
