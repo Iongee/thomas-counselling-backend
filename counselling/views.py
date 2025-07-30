@@ -1999,9 +1999,7 @@ async def sse_stream(request):
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
     response['Connection'] = 'keep-alive'
-    response['Access-Control-Allow-Origin'] = 'https://lets-talk-counselling.netlify.app' # http://localhost:5173
-    response['Access-Control-Allow-Credentials'] = 'true'
-    response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+    # CORS headers are handled by corsheaders middleware in settings.py
 
     logger.info(f"SSE Stream: Successfully created streaming response for user {user.id}")
     return response
