@@ -1,3 +1,4 @@
+import json
 from django.http import JsonResponse, StreamingHttpResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -1895,18 +1896,30 @@ async def sse_stream(request):
         return response
 
     if request.method != 'GET':
-        return HttpResponse(status=405)
+        error_data = json.dumps({"error": "Method not allowed"})
+        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
+                              content_type='text/event-stream', status=405)
+        response['Cache-Control'] = 'no-cache'
+        return response
 
     # Get token from query parameter with better error handling
     token = request.GET.get('token')
     if not token:
         logger.error("SSE Stream: No token provided in query params")
-        return HttpResponse('Token required in query parameter', status=401)
+        error_data = json.dumps({"error": "Token required in query parameter"})
+        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
+                              content_type='text/event-stream', status=401)
+        response['Cache-Control'] = 'no-cache'
+        return response
 
     # Validate token format - Firebase tokens are typically much longer
     if len(token) < 20:
         logger.error(f"SSE Stream: Token too short: {len(token)} characters")
-        return HttpResponse('Invalid token format', status=401)
+        error_data = json.dumps({"error": "Invalid token format"})
+        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
+                              content_type='text/event-stream', status=401)
+        response['Cache-Control'] = 'no-cache'
+        return response
 
     logger.info(f"SSE Stream: Token received (length: {len(token)}): {token[:20]}...")
 
@@ -1923,7 +1936,11 @@ async def sse_stream(request):
 
         if exp < current_time:
             logger.error(f"SSE Stream: Token expired. Exp: {exp}, Current: {current_time}, Diff: {current_time - exp}s")
-            return HttpResponse('Token expired', status=401)
+            error_data = json.dumps({"error": "Token expired"})
+            response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
+                                  content_type='text/event-stream', status=401)
+            response['Cache-Control'] = 'no-cache'
+            return response
 
         # Log token timing info for debugging
         logger.info(f"SSE Stream: Token timing - Issued: {iat}, Expires: {exp}, Current: {current_time}, TTL: {exp - current_time}s")
@@ -1935,7 +1952,11 @@ async def sse_stream(request):
             logger.info(f"SSE Stream: User found: {user.display_name} (ID: {user.id})")
         except User.DoesNotExist:
             logger.error(f"SSE Stream: User not found for UID: {uid}")
-            return HttpResponse('User not found', status=401)
+            error_data = json.dumps({"error": "User not found"})
+            response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
+                                  content_type='text/event-stream', status=401)
+            response['Cache-Control'] = 'no-cache'
+            return response
 
     except Exception as e:
         logger.error(f"SSE Stream: Authentication failed: {str(e)}")
@@ -1945,13 +1966,19 @@ async def sse_stream(request):
         # Provide more specific error messages for common issues
         error_str = str(e).lower()
         if 'expired' in error_str:
-            return HttpResponse('Token expired - please refresh your session', status=401)
+            error_msg = 'Token expired - please refresh your session'
         elif 'invalid' in error_str or 'malformed' in error_str:
-            return HttpResponse('Invalid token format', status=401)
+            error_msg = 'Invalid token format'
         elif 'network' in error_str or 'timeout' in error_str:
-            return HttpResponse('Network error during authentication - please retry', status=503)
+            error_msg = 'Network error during authentication - please retry'
         else:
-            return HttpResponse(f'Authentication failed: {str(e)}', status=401)
+            error_msg = f'Authentication failed: {str(e)}'
+
+        error_data = json.dumps({"error": error_msg})
+        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
+                              content_type='text/event-stream', status=401)
+        response['Cache-Control'] = 'no-cache'
+        return response
     
     # Create event queue for this connection
     event_queue = []
