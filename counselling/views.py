@@ -1891,8 +1891,7 @@ async def sse_stream(request):
     # Handle CORS preflight - CORS headers are handled by corsheaders middleware
     if request.method == 'OPTIONS':
         response = HttpResponse()
-        response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
-        response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+        # Let CORS middleware handle all CORS headers
         return response
 
     if request.method != 'GET':
