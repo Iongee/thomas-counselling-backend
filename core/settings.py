@@ -88,7 +88,6 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "https://lets-talk-counselling.netlify.app",
-    "https://7859a045d187.ngrok-free.app",  # Specific ngrok domain
     "https://*.ngrok-free.app"
 ]
 
@@ -101,14 +100,11 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
     "ngrok-skip-browser-warning",
-    "cache-control",
-    "connection",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:5173',
     "https://lets-talk-counselling.netlify.app",
-    "https://7859a045d187.ngrok-free.app",  # Specific ngrok domain
     "https://*.ngrok-free.app"
 ]
 

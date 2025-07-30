@@ -1,4 +1,3 @@
-import json
 from django.http import JsonResponse, StreamingHttpResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -1850,7 +1849,7 @@ class SSEView(APIView):
 class TestSSENotification(APIView):
     """Test endpoint to send SSE notifications"""
     permission_classes = [IsAuthenticated]
-
+    
     def post(self, request):
         try:
             # Send test notification
@@ -1860,125 +1859,48 @@ class TestSSENotification(APIView):
                 'This is a test notification to verify SSE is working!',
                 'info'
             )
-
+            
             return Response({
                 'message': 'Test notification sent successfully'
             }, status=status.HTTP_200_OK)
-
+            
         except Exception as e:
             return Response({
                 'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class NgrokPrimeView(APIView):
-    """Simple endpoint to help prime ngrok tunnel for SSE connections"""
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        return Response({
-            'message': 'Ngrok tunnel primed successfully',
-            'timestamp': timezone.now().isoformat(),
-            'instructions': 'You can now establish SSE connections without the ngrok warning page'
-        }, status=status.HTTP_200_OK)
-
-
 @csrf_exempt
 async def sse_stream(request):
     """Async SSE endpoint compatible with ASGI"""
-    import logging
-    logger = logging.getLogger(__name__)
-
     # Handle CORS preflight - CORS headers are handled by corsheaders middleware
     if request.method == 'OPTIONS':
         response = HttpResponse()
-        # Let CORS middleware handle all CORS headers
+        response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
+        response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
         return response
-
+    
     if request.method != 'GET':
-        error_data = json.dumps({"error": "Method not allowed"})
-        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
-                              content_type='text/event-stream', status=405)
-        response['Cache-Control'] = 'no-cache'
-        return response
-
-    # Get token from query parameter with better error handling
+        return HttpResponse(status=405)
+    
+    # Get token from query parameter (since EventSource doesn't support custom headers)
     token = request.GET.get('token')
     if not token:
-        logger.error("SSE Stream: No token provided in query params")
-        error_data = json.dumps({"error": "Token required in query parameter"})
-        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
-                              content_type='text/event-stream', status=401)
-        response['Cache-Control'] = 'no-cache'
-        return response
-
-    # Validate token format - Firebase tokens are typically much longer
-    if len(token) < 20:
-        logger.error(f"SSE Stream: Token too short: {len(token)} characters")
-        error_data = json.dumps({"error": "Invalid token format"})
-        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
-                              content_type='text/event-stream', status=401)
-        response['Cache-Control'] = 'no-cache'
-        return response
-
-    logger.info(f"SSE Stream: Token received (length: {len(token)}): {token[:20]}...")
+        return HttpResponse('Token required', status=401)
 
     try:
-        # Verify the token with increased clock skew tolerance for network delays
-        logger.info("SSE Stream: Attempting to verify Firebase token...")
-        decoded_token = firebase_auth_admin.verify_id_token(token, clock_skew_seconds=60)
+        # Verify the token directly
+        decoded_token = firebase_auth_admin.verify_id_token(token, clock_skew_seconds=10)
         uid = decoded_token.get('uid')
-
-        # Check token expiration more explicitly
-        exp = decoded_token.get('exp', 0)
-        iat = decoded_token.get('iat', 0)
-        current_time = time.time()
-
-        if exp < current_time:
-            logger.error(f"SSE Stream: Token expired. Exp: {exp}, Current: {current_time}, Diff: {current_time - exp}s")
-            error_data = json.dumps({"error": "Token expired"})
-            response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
-                                  content_type='text/event-stream', status=401)
-            response['Cache-Control'] = 'no-cache'
-            return response
-
-        # Log token timing info for debugging
-        logger.info(f"SSE Stream: Token timing - Issued: {iat}, Expires: {exp}, Current: {current_time}, TTL: {exp - current_time}s")
-        logger.info(f"SSE Stream: Token verified successfully for UID: {uid}")
 
         # Get user (User model already imported at top of file)
         try:
             user = await User.objects.aget(username=uid)
-            logger.info(f"SSE Stream: User found: {user.display_name} (ID: {user.id})")
         except User.DoesNotExist:
-            logger.error(f"SSE Stream: User not found for UID: {uid}")
-            error_data = json.dumps({"error": "User not found"})
-            response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
-                                  content_type='text/event-stream', status=401)
-            response['Cache-Control'] = 'no-cache'
-            return response
+            return HttpResponse('User not found', status=401)
 
     except Exception as e:
-        logger.error(f"SSE Stream: Authentication failed: {str(e)}")
-        import traceback
-        logger.error(f"SSE Stream: Full traceback: {traceback.format_exc()}")
-
-        # Provide more specific error messages for common issues
-        error_str = str(e).lower()
-        if 'expired' in error_str:
-            error_msg = 'Token expired - please refresh your session'
-        elif 'invalid' in error_str or 'malformed' in error_str:
-            error_msg = 'Invalid token format'
-        elif 'network' in error_str or 'timeout' in error_str:
-            error_msg = 'Network error during authentication - please retry'
-        else:
-            error_msg = f'Authentication failed: {str(e)}'
-
-        error_data = json.dumps({"error": error_msg})
-        response = HttpResponse(f'event: error\ndata: {error_data}\n\n',
-                              content_type='text/event-stream', status=401)
-        response['Cache-Control'] = 'no-cache'
-        return response
+        return HttpResponse(f'Authentication failed: {str(e)}', status=401)
     
     # Create event queue for this connection
     event_queue = []
@@ -2025,10 +1947,8 @@ async def sse_stream(request):
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
     response['Connection'] = 'keep-alive'
-    # Add ngrok-specific headers to bypass warning page
-    response['ngrok-skip-browser-warning'] = 'true'
-    response['User-Agent'] = 'EventSource'
-    # CORS headers are handled by corsheaders middleware in settings.py
-
-    logger.info(f"SSE Stream: Successfully created streaming response for user {user.id}")
+    response['Access-Control-Allow-Origin'] = 'https://lets-talk-counselling.netlify.app' # http://localhost:5173
+    response['Access-Control-Allow-Credentials'] = 'true'
+    response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
+    
     return response
