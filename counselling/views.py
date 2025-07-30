@@ -1898,19 +1898,36 @@ async def sse_stream(request):
     if request.method != 'GET':
         return HttpResponse(status=405)
 
-    # Get token from query parameter (since EventSource doesn't support custom headers)
+    # Get token from query parameter with better error handling
     token = request.GET.get('token')
-    logger.info(f"SSE Stream: Token received: {token[:20] if token else 'None'}...")
-
     if not token:
-        logger.error("SSE Stream: No token provided")
-        return HttpResponse('Token required', status=401)
+        logger.error("SSE Stream: No token provided in query params")
+        return HttpResponse('Token required in query parameter', status=401)
+
+    # Validate token format - Firebase tokens are typically much longer
+    if len(token) < 20:
+        logger.error(f"SSE Stream: Token too short: {len(token)} characters")
+        return HttpResponse('Invalid token format', status=401)
+
+    logger.info(f"SSE Stream: Token received (length: {len(token)}): {token[:20]}...")
 
     try:
-        # Verify the token directly
+        # Verify the token with increased clock skew tolerance for network delays
         logger.info("SSE Stream: Attempting to verify Firebase token...")
-        decoded_token = firebase_auth_admin.verify_id_token(token, clock_skew_seconds=10)
+        decoded_token = firebase_auth_admin.verify_id_token(token, clock_skew_seconds=60)
         uid = decoded_token.get('uid')
+
+        # Check token expiration more explicitly
+        exp = decoded_token.get('exp', 0)
+        iat = decoded_token.get('iat', 0)
+        current_time = time.time()
+
+        if exp < current_time:
+            logger.error(f"SSE Stream: Token expired. Exp: {exp}, Current: {current_time}, Diff: {current_time - exp}s")
+            return HttpResponse('Token expired', status=401)
+
+        # Log token timing info for debugging
+        logger.info(f"SSE Stream: Token timing - Issued: {iat}, Expires: {exp}, Current: {current_time}, TTL: {exp - current_time}s")
         logger.info(f"SSE Stream: Token verified successfully for UID: {uid}")
 
         # Get user (User model already imported at top of file)
@@ -1925,7 +1942,17 @@ async def sse_stream(request):
         logger.error(f"SSE Stream: Authentication failed: {str(e)}")
         import traceback
         logger.error(f"SSE Stream: Full traceback: {traceback.format_exc()}")
-        return HttpResponse(f'Authentication failed: {str(e)}', status=401)
+
+        # Provide more specific error messages for common issues
+        error_str = str(e).lower()
+        if 'expired' in error_str:
+            return HttpResponse('Token expired - please refresh your session', status=401)
+        elif 'invalid' in error_str or 'malformed' in error_str:
+            return HttpResponse('Invalid token format', status=401)
+        elif 'network' in error_str or 'timeout' in error_str:
+            return HttpResponse('Network error during authentication - please retry', status=503)
+        else:
+            return HttpResponse(f'Authentication failed: {str(e)}', status=401)
     
     # Create event queue for this connection
     event_queue = []

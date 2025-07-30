@@ -21,22 +21,35 @@ default_app = firebase_admin.initialize_app(cred)
 
 User = get_user_model() 
 
-class FirebaseAuthentication(authentication.BaseAuthentication): 
+class FirebaseAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
         auth_header = request.META.get("HTTP_AUTHORIZATION")
         if not auth_header:
             raise NoAuthToken("No auth token provided")
-        
+
         id_token = auth_header.split(" ").pop()
+
+        # Validate token format
+        if not id_token or len(id_token) < 20:
+            raise InvalidAuthToken("Invalid token format")
+
         decoded_token = None
         try:
-            decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=10)
-        except Exception:
-            raise InvalidAuthToken("Invalid auth token")
-        
+            # Use increased clock skew tolerance for network delays
+            decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=60)
+        except Exception as e:
+            # Provide more specific error messages
+            error_str = str(e).lower()
+            if 'expired' in error_str:
+                raise InvalidAuthToken("Token expired - please refresh your session")
+            elif 'invalid' in error_str or 'malformed' in error_str:
+                raise InvalidAuthToken("Invalid token format")
+            else:
+                raise InvalidAuthToken(f"Token verification failed: {str(e)}")
+
         if not id_token or not decoded_token:
             return None
-        
+
         is_email_verified = decoded_token.get("email_verified", False)
 
         if not is_email_verified:
