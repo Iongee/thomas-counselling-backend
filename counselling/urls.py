@@ -11,7 +11,7 @@ from .views import (CsrfCookie, Login, Logout, CurrentUser,
                     GenerateObjectives, RefineObjectives, CreateSessionWithObjectives,
                     SessionDetail, ObjectiveMessages, CompleteObjective,
                         VoteToMoveNext, MoveToNextObjective, VoteToEndSession, SubmitSummaryResponse,
-    GetSessionSummary, SSEView, TestSSENotification, sse_stream)
+    GetSessionSummary, SSEView, TestSSENotification, sse_stream, NgrokPrimeView)
 
 urlpatterns = [
     path('api/set-csrf-token', CsrfCookie.as_view(), name='set_csrf_token'),
@@ -66,6 +66,7 @@ urlpatterns = [
     path('api/sse/', SSEView.as_view(), name='sse_stream_class'),
     path('api/sse-simple/', sse_stream, name='sse_stream'),
     
-    # Test endpoint
+    # Test endpoints
     path('api/test-sse/', TestSSENotification.as_view(), name='test_sse'),
+    path('api/ngrok-prime/', NgrokPrimeView.as_view(), name='ngrok_prime'),
 ]

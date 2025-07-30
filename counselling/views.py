@@ -1849,7 +1849,7 @@ class SSEView(APIView):
 class TestSSENotification(APIView):
     """Test endpoint to send SSE notifications"""
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         try:
             # Send test notification
@@ -1859,47 +1859,72 @@ class TestSSENotification(APIView):
                 'This is a test notification to verify SSE is working!',
                 'info'
             )
-            
+
             return Response({
                 'message': 'Test notification sent successfully'
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
             return Response({
                 'error': str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
+class NgrokPrimeView(APIView):
+    """Simple endpoint to help prime ngrok tunnel for SSE connections"""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response({
+            'message': 'Ngrok tunnel primed successfully',
+            'timestamp': timezone.now().isoformat(),
+            'instructions': 'You can now establish SSE connections without the ngrok warning page'
+        }, status=status.HTTP_200_OK)
+
+
 @csrf_exempt
 async def sse_stream(request):
     """Async SSE endpoint compatible with ASGI"""
+    import logging
+    logger = logging.getLogger(__name__)
+
     # Handle CORS preflight - CORS headers are handled by corsheaders middleware
     if request.method == 'OPTIONS':
         response = HttpResponse()
         response['Access-Control-Allow-Methods'] = 'GET, OPTIONS'
         response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
         return response
-    
+
     if request.method != 'GET':
         return HttpResponse(status=405)
-    
+
     # Get token from query parameter (since EventSource doesn't support custom headers)
     token = request.GET.get('token')
+    logger.info(f"SSE Stream: Token received: {token[:20] if token else 'None'}...")
+
     if not token:
+        logger.error("SSE Stream: No token provided")
         return HttpResponse('Token required', status=401)
 
     try:
         # Verify the token directly
+        logger.info("SSE Stream: Attempting to verify Firebase token...")
         decoded_token = firebase_auth_admin.verify_id_token(token, clock_skew_seconds=10)
         uid = decoded_token.get('uid')
+        logger.info(f"SSE Stream: Token verified successfully for UID: {uid}")
 
         # Get user (User model already imported at top of file)
         try:
             user = await User.objects.aget(username=uid)
+            logger.info(f"SSE Stream: User found: {user.display_name} (ID: {user.id})")
         except User.DoesNotExist:
+            logger.error(f"SSE Stream: User not found for UID: {uid}")
             return HttpResponse('User not found', status=401)
 
     except Exception as e:
+        logger.error(f"SSE Stream: Authentication failed: {str(e)}")
+        import traceback
+        logger.error(f"SSE Stream: Full traceback: {traceback.format_exc()}")
         return HttpResponse(f'Authentication failed: {str(e)}', status=401)
     
     # Create event queue for this connection
@@ -1950,5 +1975,6 @@ async def sse_stream(request):
     response['Access-Control-Allow-Origin'] = 'https://lets-talk-counselling.netlify.app' # http://localhost:5173
     response['Access-Control-Allow-Credentials'] = 'true'
     response['Access-Control-Allow-Headers'] = 'Authorization, Content-Type'
-    
+
+    logger.info(f"SSE Stream: Successfully created streaming response for user {user.id}")
     return response
