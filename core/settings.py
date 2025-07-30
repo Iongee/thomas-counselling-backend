@@ -101,6 +101,8 @@ CORS_ALLOW_HEADERS = [
     "x-csrftoken",
     "x-requested-with",
     "ngrok-skip-browser-warning",
+    "cache-control",
+    "connection",
 ]
 
 CSRF_TRUSTED_ORIGINS = [

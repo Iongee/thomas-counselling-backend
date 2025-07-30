@@ -2025,6 +2025,9 @@ async def sse_stream(request):
     response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
     response['Cache-Control'] = 'no-cache'
     response['Connection'] = 'keep-alive'
+    # Add ngrok-specific headers to bypass warning page
+    response['ngrok-skip-browser-warning'] = 'true'
+    response['User-Agent'] = 'EventSource'
     # CORS headers are handled by corsheaders middleware in settings.py
 
     logger.info(f"SSE Stream: Successfully created streaming response for user {user.id}")
